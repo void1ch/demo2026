@@ -7,12 +7,6 @@
 
 ## Устройство ISP
 
-> [!CAUTION]
-> Перед началом следует обновить устройство командой
-> ```bash
->apt-get update -y
-> ```
-
 ### Имя устройства
 ```bash
 hostnamectl set-hostname isp.au-team.irpo; exec bash
@@ -45,11 +39,11 @@ gateway 172.16.2.2
 ```
 ![Screenshot](assets/3.png)
 
->[!IMPORTANT]
->Разрыв связей resolv.conf с остальным 
->```bash
->unlink /etc/resolv.conf
->```
+> [!NOTE]
+> Перед началом следует обновить устройство командой
+> ```bash
+>apt-get update -y
+> ```
 
 Перезапустим сеть:
 ```bash
@@ -72,12 +66,6 @@ iptables-save >> /etc/iptables/rules.v4
 ```
 ![Screenshot](assets/7.png)
 
->[!TIP]
->Можно посмотрть сохраненные правила через команду:
->```bash
->iptables -L -t nat
->```
-
 ### Временная настройка DNS серверов 
 ```bash
 nano /etc/resolv.conf
@@ -87,9 +75,6 @@ nano /etc/resolv.conf
 nameserver 1.1.1.1
 ```
 ![Screenshot](assets/8.png)
-
->[!WARNING]
->Если вы по какой то причине перезагрузили устройство, не забывайте про команду `sysctl -p` чтобы применить переадресацию NAT
 
 ---
 
@@ -125,14 +110,8 @@ iface ens224 inet static
 address 192.168.1.1
 netmask 255.255.255.224
 ```
-> [!CAUTION]
+> [!NOTE]
 > Писать именно до этого момента, если заполните все, конфиг будет ругаться на то что нет VLAN, и не сможет скачать VLAN :)
-
->[!IMPORTANT]
->Разрыв связей resolv.conf с остальным 
->```bash
->unlink /etc/resolv.conf
->```
 
 ### Временная настройка DNS серверов 
 ```bash
@@ -144,7 +123,7 @@ nameserver 1.1.1.1
 ```
 ![Screenshot](assets/8.png)
 
-> [!CAUTION]
+> [!NOTE]
 > Перед началом следует обновить устройство командой
 > ```bash
 >apt-get update -y
@@ -197,9 +176,6 @@ ttl 64
 ```
 ![Screenshot](assets/11.png)
 
->[!IMPORTANT]
->Иногда виртуалки зависают так как вставка команды идет построчно, это нормально
-
 Перезапустите сеть:
 ```bash
 systemctl restart networking
@@ -211,12 +187,6 @@ adduser net_admin
 # Пароль: P@ssw0rd
 ```
 ![Screenshot](assets/23.png)
-
->[!TIP]
->Более быстрый способ (экономия = 2 секунды)
->```bash
->useradd -p P@ssw0rd net_admin
->```
 
 Выдайте привилегии через `visudo`:
 ```bash
@@ -244,12 +214,6 @@ iptables-save >> /etc/iptables/rules.v4
 ```
 ![Screenshot](assets/28.png)
 
->[!TIP]
->Можно посмотрть сохраненные правила через команду:
->```bash
->iptables -L -t nat
->```
-
 ### Временная настройка DNS серверов 
 ```bash
 nano /etc/resolv.conf
@@ -259,10 +223,6 @@ nano /etc/resolv.conf
 nameserver 1.1.1.1
 ```
 ![Screenshot](assets/8.png)
-
->[!WARNING]
->Если вы по какой то причине перезагрузили устройство, не забывайте про команду `sysctl -p` чтобы применить переадресацию NAT
-
 
 ### Настройка GRE туннеля
 Добавьте модуль `ip_gre` в автозагрузку:
@@ -339,11 +299,10 @@ router ospf
 >exit
 >```
 >`vtysh -c "show ip ospf neighbor"` соседи OSPF
+>
 >`vtysh -c "show ip route ospf"` таблица маршрутизации
+>
 >`vtysh -c "show running-config"` проверка конфига
-
->[!IMPORTANT]
->Иногда виртуалки зависают так как вставка команды идет построчно, это нормально
 
 ### DHCP-сервер на HQ-RTR
 Установите DHCP-сервер:
@@ -384,9 +343,7 @@ subnet 192.168.2.0 netmask 255.255.255.224 {
 systemctl restart isc-dhcp-server
 ```
 
->[!WARNING]
->Если вы по какой то причине перезагрузили устройство, не забывайте про команду `sysctl -p` чтобы применить переадресацию NAT
-
+---
 ---
 
 ## Устройство BR-RTR
@@ -402,12 +359,6 @@ hostnamectl set-hostname br-rtr.au-team.irpo; exec bash
 nano /etc/apt/sources.list
 ```
 ![Screenshot](assets/2.png)
-
->[!IMPORTANT]
->Разрыв связей resolv.conf с остальным 
->```bash
->unlink /etc/resolv.conf
->```
 
 ### Настройка адресов
 ```bash
@@ -442,12 +393,6 @@ ttl 64
 systemctl restart networking
 ```
 
-> [!CAUTION]
-> Перед продолжением следует обновить устройство командой
-> ```bash
->apt-get update -y
-> ```
-
 ### Временная настройка DNS серверов 
 ```bash
 nano /etc/resolv.conf
@@ -464,12 +409,6 @@ adduser net_admin
 # Пароль: P@ssw0rd
 ```
 ![Screenshot](assets/24.png)
-
->[!TIP]
->Более быстрый способ (экономия = 2 секунды)
->```bash
->useradd -p P@ssw0rd net_admin
->```
 
 Выдайте привилегии через `visudo`:
 ```bash
@@ -499,9 +438,6 @@ iptables -t nat -A POSTROUTING -s 192.168.4.0/28 -o ens192 -j MASQUERADE
 iptables-save >> /etc/iptables/rules.v4
 ```
 ![Screenshot](assets/29.png)
-
->[!IMPORTANT]
->Иногда виртуалки зависают так как вставка команды идет построчно, это нормально
 
 Добавьте модуль `ip_gre` в автозагрузку:
 ```bash
@@ -579,9 +515,7 @@ exit
 >`vtysh -c "show ip route ospf"` таблица маршрутизации
 >`vtysh -c "show running-config"` проверка конфига
 
->[!WARNING]
->Если вы по какой то причине перезагрузили устройство, не забывайте про команду `sysctl -p` чтобы применить переадресацию NAT
-
+---
 ---
 
 ## Устройство HQ-CLI
@@ -597,12 +531,6 @@ hostnamectl set-hostname hq-cli.au-team.irpo; exec bash
 nano /etc/apt/sources.list
 ```
 ![Screenshot](assets/2.png)
-
->[!IMPORTANT]
->Разрыв связей resolv.conf с остальным 
->```bash
->unlink /etc/resolv.conf
->```
 
 ### Настройка адресов (DHCP)
 ```bash
@@ -636,6 +564,7 @@ nameserver 192.168.1.2
 > ```
 
 ---
+---
 
 ## Устройство HQ-SRV
 
@@ -650,12 +579,6 @@ hostnamectl set-hostname hq-srv.au-team.irpo; exec bash
 nano /etc/apt/sources.list
 ```
 ![Screenshot](assets/2.png)
-
->[!IMPORTANT]
->Разрыв связей resolv.conf с остальным 
->```bash
->unlink /etc/resolv.conf
->```
 
 ### Временная настройка DNS серверов 
 ```bash
@@ -989,3 +912,25 @@ search au-team.irpo
 nameserver 192.168.1.2
 ```
 ![Screenshot](assets/54.png)
+
+>[!IMPORTANT]
+>Доп команды: разрыв resolv.conf с остальным 
+>```bash
+>unlink /etc/resolv.conf
+>```
+>Можно посмотрть сохраненные правила iptables через команду:
+>```bash
+>iptables -L -t nat
+>```
+>Если вы по какой то причине перезагрузили устройство, не забывайте про команду
+>```bash
+>sysctl -p
+>```
+>чтобы применить переадресацию NAT
+>
+>Иногда виртуалки зависают так как вставка команды идет построчно, это нормально
+>
+>Более быстрый способ создания пользователя (экономия = 2 секунды)
+>```bash
+>useradd -p P@ssw0rd net_admin
+>```
