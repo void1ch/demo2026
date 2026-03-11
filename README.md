@@ -39,13 +39,12 @@ gateway 172.16.2.2
 ```
 ![Screenshot](assets/3.png)
 
-Отключение systemd-resolved
-```bash
-systemctl disable --now systemd-resolved
-unlink /etc/resolv.conf
-```
-> [!CAUTION]
-> Интерфейсы имеют другие имена (ens224, ens256, ens192). Везде подставляйте их, а не примеры из методички.
+>[!TIP]
+>Отключение systemd-resolved (не использовать, т.к. systemd-resolved нету, но и забывать не стоит)
+>```bash
+>systemctl disable --now systemd-resolved
+>unlink /etc/resolv.conf
+>```
 
 Перезапустим сеть:
 ```bash
