@@ -7,6 +7,12 @@
 
 ## Устройство ISP
 
+> [!CAUTION]
+> Перед началом следует обновить устройство командой
+> ```bash
+>apt-get update -y
+> ```
+
 ### Имя устройства
 ```bash
 hostnamectl set-hostname isp.au-team.irpo; exec bash
@@ -25,13 +31,13 @@ nano /etc/network/interfaces
 ```
 Приведите файл к виду (на скриншоте `enp0s8`/`enp0s9` заменены на `ens224`/`ens256`):
 ```ini
-auto ens224
+allow-hotplug ens224
 iface ens224 inet static
 address 172.16.1.1
 netmask 255.255.255.240
 gateway 172.16.1.2
 
-auto ens256
+allow-hotplug ens256
 iface ens256 inet static
 address 172.16.2.1
 netmask 255.255.255.240
@@ -39,8 +45,9 @@ gateway 172.16.2.2
 ```
 ![Screenshot](assets/3.png)
 
->[!TIP]
->Отключение systemd-resolved (не использовать, т.к. systemd-resolved нету, но и забывать не стоит)
+>[!IMPORTANT]
+>Отключение systemd-resolved (не использовать, т.к. systemd-resolved нету на виртуалках, но и не стоит забывать что из-за него не обновляеться resolv.conf)
+>А вот unlink использовать можно
 >```bash
 >systemctl disable --now systemd-resolved
 >unlink /etc/resolv.conf
@@ -52,44 +59,49 @@ systemctl restart networking
 ```
 
 ### Переадресация (NAT)
-Раскомментируйте строку `net.ipv4.ip_forward=1` в файле:
+Вставляем строку `net.ipv4.ip_forward=1`, читаем файл и применяем в системе:
 ```bash
-nano /etc/sysctl.conf
+echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf; cat /etc/sysctl.conf; sysctl -p
 ```
 ![Screenshot](assets/6.png)
 
-Примените изменения:
-```bash
-sysctl -p
-```
 Установите iptables и настройте NAT:
 ```bash
-apt install iptables iptables-persistent
+apt install iptables iptables-persistent -y
 iptables -t nat -A POSTROUTING -s 172.16.1.0/28 -o ens192 -j MASQUERADE
 iptables -t nat -A POSTROUTING -s 172.16.2.0/28 -o ens192 -j MASQUERADE
 iptables-save >> /etc/iptables/rules.v4
 ```
 ![Screenshot](assets/7.png)
-> [!CAUTION]
-> Интерфейсы имеют другие имена (ens224, ens256, ens192). Везде подставляйте их, а не примеры из методички.
+
+>[!TIP]
+>Можно посмотрть сохраненные правила через команду:
+>```bash
+>iptables -L -t nat
+>```
 
 ### Временная настройка DNS серверов 
 ```bash
 nano /etc/resolv.conf
 ```
-Временное содержимое:
+Вставляем временное содержимое:
 ```
 nameserver 1.1.1.1
 ```
 ![Screenshot](assets/8.png)
-Перезагрузите устройство:
-```bash
-reboot
-```
+
+>[!WARNING]
+>Если вы по какой то причине перезагрузили устройство, не забывайте про команду `sysctl -p` чтобы применить переадресацию NAT
 
 ---
 
 ## Устройство HQ-RTR
+
+> [!CAUTION]
+> Перед началом следует обновить устройство командой
+> ```bash
+>apt-get update -y
+> ```
 
 ### Имя устройства
 ```bash
@@ -110,26 +122,27 @@ nano /etc/network/interfaces
 ```
 Пример содержания:
 ```ini
-auto ens192
+allow-hotplug ens192
 iface ens192 inet static
 address 172.16.1.2
 netmask 255.255.255.240
 gateway 172.16.1.1
 
-auto ens224
+allow-hotplug ens224
 iface ens224 inet static
 address 192.168.1.1
 netmask 255.255.255.192
 ```
 > [!CAUTION]
-> Интерфейсы имеют другие имена (ens224, ens256, ens192). Везде подставляйте их, а не примеры из методички.
-> Писать именно до этого момента, если заполните все, конфиг будет ругаться и не сможет скачать VLAN
+> Писать именно до этого момента, если заполните все, конфиг будет ругаться на то что нет VLAN, и не сможет скачать VLAN :)
 
-Отключение systemd-resolved
-```bash
-systemctl disable --now systemd-resolved
-unlink /etc/resolv.conf
-```
+>[!IMPORTANT]
+>Отключение systemd-resolved (не использовать, т.к. systemd-resolved нету на виртуалках, но и не стоит забывать что из-за него не обновляеться resolv.conf)
+>А вот unlink использовать можно
+>```bash
+>systemctl disable --now systemd-resolved
+>unlink /etc/resolv.conf
+>```
 
 ### Временная настройка DNS серверов 
 ```bash
@@ -143,7 +156,7 @@ nameserver 1.1.1.1
 
 Установите VLAN:
 ```bash
-apt install vlan
+apt install vlan -y
 ```
 ![Screenshot](assets/9.png)
 
@@ -163,7 +176,7 @@ nano /etc/network/interfaces
 auto ens224:1
 iface ens224:1 inet static
 address 192.168.2.1
-netmask 255.255.255.192
+netmask 255.255.255.240
 
 auto ens224.100
 iface ens224.100 inet static
@@ -188,6 +201,9 @@ ttl 64
 ```
 ![Screenshot](assets/11.png)
 
+>[!IMPORTANT]
+>Иногда виртуалки зависают так как вставка команды идет построчно, это нормально
+
 Перезапустите сеть:
 ```bash
 systemctl restart networking
@@ -199,6 +215,12 @@ adduser net_admin
 # Пароль: P@ssw0rd
 ```
 ![Screenshot](assets/23.png)
+
+>[!TIP]
+>Более быстрый способ (экономия = 2 секунды)
+>```bash
+>useradd -p P@ssw0rd net_admin
+>```
 
 Выдайте привилегии через `visudo`:
 ```bash
