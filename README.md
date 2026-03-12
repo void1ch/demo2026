@@ -5,7 +5,9 @@
 
 ## <p align="center"><b>МОДУЛЬ 1</b></p>
 
-## <details><summary><p align="center"><b>Устройство ISP</p></summary>
+## <p align="center"><b>Устройство ISP</p>
+
+## <details><summary>Настройка ISP</summary>
 <p>
 
 ### Имя устройства
