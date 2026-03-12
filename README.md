@@ -13,10 +13,6 @@ hostnamectl set-hostname isp.au-team.irpo; exec bash
 ```
 ![Screenshot](assets/1.png)
 
-<p align="center">
-  <img src="assets/1.png" width="600" />
-</p>
-
 ### Закомментировать загрузку
 ```bash
 nano /etc/apt/sources.list
@@ -81,8 +77,7 @@ nameserver 1.1.1.1
 ![Screenshot](assets/8.png)
 
 ---
-
-## Устройство HQ-RTR
+## <p align="center"><b>Устройство HQ-RTR</p>
 
 ### Имя устройства
 ```bash
@@ -350,7 +345,7 @@ systemctl restart isc-dhcp-server
 ---
 ---
 
-## Устройство BR-RTR
+## <p align="center"><b>Устройство BR-RTR</p>
 
 ### Имя устройства
 ```bash
@@ -522,7 +517,7 @@ exit
 ---
 ---
 
-## Устройство HQ-CLI
+## <p align="center"><b>Устройство HQ-CLI</p>
 
 ### Имя устройства
 ```bash
@@ -570,7 +565,7 @@ nameserver 192.168.1.2
 ---
 ---
 
-## Устройство HQ-SRV
+## <p align="center"><b>Устройство HQ-SRV</p>
 
 ### Имя устройства
 ```bash
@@ -817,7 +812,7 @@ nslookup 192.168.1.2
 
 ---
 
-## Устройство BR-SRV
+## <p align="center"><b>Устройство BR-SRV</p>
 
 ### Имя устройства
 ```bash
