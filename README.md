@@ -633,9 +633,7 @@ Banner /etc/ssh-banner
 nano /etc/ssh-banner
 ```
 ```
-----------------------
 Authorized access only
-----------------------
 ```
 ![Screenshot](assets/32.png)
 
@@ -698,7 +696,7 @@ zone "2.168.192.in-addr.arpa" {
 cp /etc/bind/db.local /etc/bind/au-team.irpo
 nano /etc/bind/au-team.irpo
 ```
-Приведите к виду:
+Приведите к виду **У HQ-CLI может быть другой IP**:
 ```dns
 $TTL    604800
 @       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
@@ -740,7 +738,7 @@ $TTL    604800
 ![Screenshot](assets/51.png)
 
 #### 5. Обратная зона для 192.168.2.0/28
-Скопируйте предыдущую и отредактируйте:
+Скопируйте предыдущую и отредактируйте **У HQ-CLI может быть другой IP**:
 ```bash
 cp /etc/bind/au-team.irpo_obr /etc/bind/au-team.irpo_hqobr
 nano /etc/bind/au-team.irpo_hqobr
@@ -907,8 +905,6 @@ nameserver 192.168.1.2
 ```
 ![Screenshot](assets/54.png)
 
-timedatectl set-timezone Asia/Tomsk
-нужно настроить через dnsmasq
 Зеркала Яндекса
 ```bash
 deb http://mirror.yandex.ru/debian/ bookworm main
@@ -920,7 +916,7 @@ deb-src http://mirror.yandex.ru/debian/ bookworm-updates main contrib
 ```
 
 >[!IMPORTANT]
->Доп команды: разрыв resolv.conf с остальным 
+>Доп команды: разрыв resolv.conf с остальным, далее поможет с ISP
 >```bash
 >unlink /etc/resolv.conf
 >```
@@ -935,11 +931,6 @@ deb-src http://mirror.yandex.ru/debian/ bookworm-updates main contrib
 >чтобы применить переадресацию NAT
 >
 >Иногда виртуалки зависают так как вставка команды идет построчно, это нормально
->
->Более быстрый способ создания пользователя (экономия = 2 секунды)
->```bash
->useradd -p P@ssw0rd net_admin
->```
 
 ---
 
@@ -1038,8 +1029,8 @@ exec /bin/rbash
 chmod +x /usr/local/bin/restricted_shell.sh
 ```
 
-> [!IMPORTANT]
-> После ввода пользователей в домен и входа на HQ-CLI, ограничение команд будет применяться через назначение этого скрипта как оболочки.
+> [!NOTE]
+> Не пользовался, но есть - после ввода пользователей в домен и входа на HQ-CLI, ограничение команд будет применяться через назначение этого скрипта как оболочки.
 > На BR-SRV для каждого пользователя можно задать оболочку:
 > ```bash
 > samba-tool user setattr hquser1 loginShell /usr/local/bin/restricted_shell.sh
@@ -1609,11 +1600,15 @@ systemctl restart nginx
 ---
 
 ## <p align="center"><b>11. Проверка доступа с HQ-CLI</b></p>
+### Установка 💩Yandex💩Browser💩 
+Через нормальный бразуер пишем в поисковой строке
+```bash
+https://browser.yandex.ru
+#И дважды нажимаем на кнопку скачать, после того как скачали нажать по пакету yandex.deb > ПКМ > Open With > Software Install, спустя минут 5 установит.
+```
 
-С HQ-CLI откройте браузер и проверьте:
-
-1. **web.au-team.irpo** — должен запросить логин/пароль (WEB / P@ssw0rd), после чего отобразить сайт
-2. **docker.au-team.irpo** — должен отобразить testapp
+1. **http://web.au-team.irpo** — должен запросить логин/пароль (WEB / P@ssw0rd), после чего отобразить сайт
+2. **http://docker.au-team.irpo** — должен отобразить testapp
 
 Также проверьте:
 ```bash
@@ -1627,8 +1622,3 @@ curl http://docker.au-team.irpo
 > nslookup web.au-team.irpo
 > nslookup docker.au-team.irpo
 > ```
-
-wget https://browser.yandex.ru/download/?banerid=6302000000&zih=1&beta=1&os=linux&x64=1&package=deb&full=1
- sudo dpkg -i ~/Загрузки/yandex*.deb
- sudo apt install -f
- yandex-browser
