@@ -1116,7 +1116,7 @@ lsblk
 
 ### Создание RAID 1 (зеркало)
 ```bash
-mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sdb /dev/sdc
+mdadm --create /dev/md0 --level=0 --raid-devices=2 /dev/sdb /dev/sdc
 ```
 Подтвердите: `y`
 
