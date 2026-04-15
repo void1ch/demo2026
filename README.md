@@ -23,7 +23,7 @@
 
 ### Имя устройства
 ```bash
-hostnamectl set-hostname isp.au-team.irpo; exec bash
+hostnamectl set-hostname isp.au-team.irpo; newgrp
 ```
 ![Screenshot](assets/1.png)
 
@@ -37,8 +37,11 @@ nano /etc/apt/sources.list
 ```bash
 nano /etc/network/interfaces
 ```
-Приведите файл к виду (на скриншоте `enp0s8`/`enp0s9` заменены на `ens224`/`ens256`):
+Перепишите файл к виду:
 ```ini
+allow-hotplug ens192
+iface ens192 inet dhcp
+
 allow-hotplug ens224
 iface ens224 inet static
 address 172.16.1.1
@@ -55,28 +58,10 @@ netmask 255.255.255.240
 ```bash
 systemctl restart networking
 ```
-
-> [!NOTE]
-> Перед началом следует обновить устройство командой
-> ```bash
->apt-get update -y
-> ```
-
-### Переадресация (NAT)
-Вставляем строку `net.ipv4.ip_forward=1`, читаем файл и применяем в системе:
+И проверим выставление IP:
 ```bash
-echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf; sysctl -p
+ip a
 ```
-![Screenshot](assets/6.png)
-
-Установите iptables и настройте NAT:
-```bash
-apt install iptables iptables-persistent -y
-iptables -t nat -A POSTROUTING -s 172.16.1.0/28 -o ens192 -j MASQUERADE
-iptables -t nat -A POSTROUTING -s 172.16.2.0/28 -o ens192 -j MASQUERADE
-iptables-save >> /etc/iptables/rules.v4
-```
-![Screenshot](assets/7.png)
 
 ### Временная настройка DNS серверов 
 ```bash
@@ -88,16 +73,49 @@ nameserver 1.1.1.1
 ```
 ![Screenshot](assets/8.png)
 
+> [!NOTE]
+> Перед началом следует обновить пакеты на устройстве командой:
+> ```bash
+> apt-get update -y
+> ```
+
+### Переадресация (NAT)
+Вставляем строку `net.ipv4.ip_forward=1`, читаем файл и применяем в системе:
+```bash
+echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf; sysctl -p
+```
+![Screenshot](assets/6.png)
+
+Установите iptables:
+```bash
+apt install iptables iptables-persistent -y
+```
+И прописываем правило:
+```bash
+iptables -t nat -A POSTROUTING -s 172.16.1.0/28 -o ens192 -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 172.16.2.0/28 -o ens192 -j MASQUERADE
+iptables-save >> /etc/iptables/rules.v4
+```
+Включаем в автозапуск:
+```bash
+systemctl enable iptables
+```
+![Screenshot](assets/7.png)
+
 ### Настройка часового пояса
 ```bash
 timedatectl set-timezone Asia/Tomsk
+```
+Проверка:
+```bash
+timedatectl
 ```
 ---
 ## <p align="center"><b>Устройство HQ-RTR</p>
 
 ### Имя устройства
 ```bash
-hostnamectl set-hostname hq-rtr.au-team.irpo; exec bash
+hostnamectl set-hostname hq-rtr.au-team.irpo; newgrp
 ```
 ![Screenshot](assets/5.png)
 
@@ -146,7 +164,7 @@ nameserver 1.1.1.1
 > [!NOTE]
 > Перед началом следует обновить устройство командой
 > ```bash
->apt-get update -y
+> apt-get update -y
 > ```
 
 Установите VLAN:
@@ -155,7 +173,7 @@ apt install vlan -y
 ```
 ![Screenshot](assets/9.png)
 
-Дайте поддержку VLAN
+Выдайте поддержку VLAN
 ```bash
 modprobe 8021q
 echo 8021q >> /etc/modules
@@ -173,6 +191,11 @@ iface ens224:1 inet static
 address 192.168.2.1
 netmask 255.255.255.224
 
+allow-hotplug ens224:2
+iface ens224:2 inet static
+address 192.168.3.1
+netmask 255.255.255.248
+
 allow-hotplug ens224.100
 iface ens224.100 inet static
 address 192.168.1.3
@@ -184,6 +207,12 @@ iface ens224.200 inet static
 address 192.168.2.3
 netmask 255.255.255.224
 vlan_raw_device ens224:1
+
+allow-hotplug ens224.999
+iface ens224.999 inet static
+address 192.168.3.3
+netmask 255.255.255.248
+vlan_raw_device ens224:2
 
 allow-hotplug tun1
 iface tun1 inet tunnel
@@ -201,10 +230,9 @@ ttl 64
 systemctl restart networking
 ```
 
-### Добавление пользователя
+### Добавление пользователя, пароль `P@ssw0rd`:
 ```bash
 adduser net_admin
-# Пароль: P@ssw0rd
 ```
 ![Screenshot](assets/23.png)
 
@@ -212,9 +240,10 @@ adduser net_admin
 ```bash
 visudo
 ```
-Добавьте строку:
+Под root пользователем добавьте строки:
 ```
 net_admin ALL=(ALL:ALL) ALL
+sshuser ALL=(ALL:ALL) ALL
 ```
 ![Screenshot](assets/25.png)
 
@@ -225,15 +254,6 @@ echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf; sysctl -p
 ```
 ![Screenshot](assets/6.png)
 
-Установите iptables:
-```bash
-apt install iptables iptables-persistent -y
-iptables -t nat -A POSTROUTING -s 192.168.1.0/27 -o ens192 -j MASQUERADE
-iptables -t nat -A POSTROUTING -s 192.168.2.0/27 -o ens192 -j MASQUERADE
-iptables-save >> /etc/iptables/rules.v4
-```
-![Screenshot](assets/28.png)
-
 ### Временная настройка DNS серверов 
 ```bash
 nano /etc/resolv.conf
@@ -243,6 +263,23 @@ nano /etc/resolv.conf
 nameserver 1.1.1.1
 ```
 ![Screenshot](assets/8.png)
+
+Установите iptables:
+```bash
+apt install iptables iptables-persistent -y
+```
+И прописываем правило:
+```bash
+iptables -t nat -A POSTROUTING -s 192.168.1.0/27 -o ens192 -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 192.168.2.0/27 -o ens192 -j MASQUERADE
+iptables-save >> /etc/iptables/rules.v4
+```
+![Screenshot](assets/28.png)
+
+Включаем в автозапуск:
+```bash
+systemctl enable iptables
+```
 
 ### Настройка GRE туннеля
 Добавьте модуль `ip_gre` в автозагрузку:
@@ -263,8 +300,12 @@ apt install frr -y
 ```
 ![Screenshot](assets/34.png)
 
-Включите демон OSPF в `/etc/frr/daemons`:
+Включите демон OSPF:
 ```
+nano /etc/frr/daemons
+```
+Где меняем ospfd на статус yes:
+```bash
 ospfd=yes
 ```
 ![Screenshot](assets/35.png)
@@ -277,6 +318,9 @@ systemctl restart frr
 Настройте OSPF через `vtysh`:
 ```bash
 vtysh
+```
+Команды для настройки:
+```bash
 conf t
 router ospf
 router-id 10.10.0.1
@@ -291,17 +335,30 @@ ip ospf area 0
 ip ospf authentication
 ip ospf authentication-key P@ssw0rd
 exit
+do write
 exit
 write memory
+wr
 exit
 ```
->`vtysh -c "show ip ospf neighbor"` соседи OSPF
->
->`vtysh -c "show ip route ospf"` таблица маршрутизации
->
->`vtysh -c "show running-config"` проверка конфига
-
 ![Screenshot](assets/36.png)
+
+Перезапускаем службу:
+```bash
+systemctl restart frr
+```
+Перезапустите сеть:
+```bash
+systemctl restart networking
+```
+Добавляем frr в автозагрузку:
+```bash
+systemctl enable frr
+```
+
+>[!IMPORTANT]
+>ОБЯЗАТЕЛЬНО ВВЕСТИ ЭТУ КОМАНДУ ДЛЯ ПРОВЕРКИ КОНФИГА
+>`vtysh -c "show running-config"`
 
 ### DHCP-сервер на HQ-RTR
 Установите DHCP-сервер:
@@ -337,13 +394,26 @@ subnet 192.168.2.0 netmask 255.255.255.224 {
 ```
 ![Screenshot](assets/41.png)
 
+Перезапустите сеть:
+```bash
+systemctl restart networking
+```
 Перезапустите службу:
 ```bash
 systemctl restart isc-dhcp-server
 ```
+Включаем в автозапуск:
+```bash
+systemctl enable isc-dhcp-server
+```
+
 ### Настройка часового пояса
 ```bash
 timedatectl set-timezone Asia/Tomsk
+```
+Проверка:
+```bash
+timedatectl
 ```
 
 ---
@@ -352,7 +422,7 @@ timedatectl set-timezone Asia/Tomsk
 
 ### Имя устройства
 ```bash
-hostnamectl set-hostname br-rtr.au-team.irpo; exec bash
+hostnamectl set-hostname br-rtr.au-team.irpo; newgrp
 ```
 ![Screenshot](assets/4.png)
 
@@ -405,10 +475,9 @@ nameserver 1.1.1.1
 ```
 ![Screenshot](assets/8.png)
 
-### Добавление пользователя
+### Добавление пользователя пароль `P@ssw0rd`:
 ```bash
 adduser net_admin
-# Пароль: P@ssw0rd
 ```
 ![Screenshot](assets/24.png)
 
@@ -416,9 +485,10 @@ adduser net_admin
 ```bash
 visudo
 ```
-Добавьте строку:
+Под root пользователем добавьте строки:
 ```
 net_admin ALL=(ALL:ALL) ALL
+sshuser ALL=(ALL:ALL) ALL
 ```
 ![Screenshot](assets/25.png)
 
@@ -432,11 +502,18 @@ echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf; sysctl -p
 Установите iptables:
 ```bash
 apt install iptables iptables-persistent -y
+```
+И прописываем правило:
+```bash
 iptables -t nat -A POSTROUTING -s 192.168.4.0/28 -o ens192 -j MASQUERADE
 iptables-save >> /etc/iptables/rules.v4
 ```
 ![Screenshot](assets/29.png)
 
+Включаем в автозапуск:
+```bash
+systemctl enable iptables
+```
 Добавьте модуль `ip_gre` в автозагрузку:
 ```bash
 echo "ip_gre" >> /etc/modules
@@ -455,8 +532,12 @@ apt install frr -y
 ```
 ![Screenshot](assets/34.png)
 
-Включите демон OSPF в `/etc/frr/daemons`:
+Включите демон OSPF:
 ```
+nano /etc/frr/daemons
+```
+Где меняем ospfd на статус yes:
+```bash
 ospfd=yes
 ```
 ![Screenshot](assets/35.png)
@@ -466,39 +547,328 @@ ospfd=yes
 systemctl restart frr
 ```
 
-Настройка через `vtysh`:
->```bash
->vtysh
->conf t
->router ospf
->router-id 10.10.0.2
->passive-interface default
->no passive-interface tun1
->network 192.168.4.0/28 area 0
->network 10.10.0.0/30 area 0
->exit
->interface tun1
->ip ospf area 0
->ip ospf authentication
->ip ospf authentication-key P@ssw0rd
->exit
->exit
->write memory
->exit
->```
->`vtysh -c "show ip ospf neighbor"` соседи OSPF
->
->`vtysh -c "show ip route ospf"` таблица маршрутизации
->
->`vtysh -c "show running-config"` проверка конфига
+Настройте OSPF через `vtysh`:
+```bash
+vtysh
+```
+Команды для настройки:
+```bash
+conf t
+router ospf
+router-id 10.10.0.2
+passive-interface default
+no passive-interface tun1
+network 192.168.4.0/28 area 0
+network 10.10.0.0/30 area 0
+exit
+interface tun1
+ip ospf area 0
+ip ospf authentication
+ip ospf authentication-key P@ssw0rd
+exit
+do write
+exit
+write memory
+exit
+```
 ![Screenshot](assets/37.png)
 
+Перезапускаем службу:
+```bash
+systemctl restart frr
+```
+Перезапустите сеть:
+```bash
+systemctl restart networking
+```
+Добавляем frr в автозагрузку:
+```bash
+systemctl enable frr
+```
+
+>[!IMPORTANT]
+>ОБЯЗАТЕЛЬНО ВВЕСТИ ЭТУ КОМАНДУ ДЛЯ ПРОВЕРКИ КОНФИГА
+>`vtysh -c "show running-config"`
+
 >[!NOTE]
->После этого на HQ-RTR перезагрузить сеть и пингануть BR-RTR командой `systemctl restart networking; ping 10.10.0.2`
+>После этого пингануть HQ-RTR командой `ping 10.10.0.1`
 
 ### Настройка часового пояса
 ```bash
 timedatectl set-timezone Asia/Tomsk
+```
+Проверка:
+```bash
+timedatectl
+```
+
+---
+
+## <p align="center"><b>Устройство HQ-SRV</p>
+
+### Имя устройства
+```bash
+hostnamectl set-hostname hq-srv.au-team.irpo; newgrp
+```
+![Screenshot](assets/12.png)
+
+### Закомментировать загрузку
+```bash
+nano /etc/apt/sources.list
+```
+![Screenshot](assets/2.png)
+
+### Настройка адресов
+```bash
+nano /etc/network/interfaces
+```
+```ini
+allow-hotplug ens192
+iface ens192 inet static
+address 192.168.1.2
+netmask 255.255.255.224
+gateway 192.168.1.1
+```
+![Screenshot](assets/13.png)
+
+Перезапустите сеть:
+```bash
+systemctl restart networking
+```
+
+### Временная настройка DNS серверов 
+```bash
+nano /etc/resolv.conf
+```
+Временное содержимое:
+```
+nameserver 1.1.1.1
+```
+![Screenshot](assets/8.png)
+
+> [!CAUTION]
+> Перед началом следует обновить устройство командой
+> ```bash
+>apt-get update -y
+> ```
+
+### Добавление пользователя, пароль `P@ssw0rd`:
+```bash
+adduser sshuser -u 2026
+```
+![Screenshot](assets/27.png)
+
+Выдайте привилегии через `visudo`:
+```bash
+visudo
+```
+Добавьте строку:
+```
+sshuser ALL=(ALL:ALL) ALL
+```
+![Screenshot](assets/21.png)
+
+### Настройка SSH
+```bash
+nano /etc/ssh/sshd_config
+```
+Внесите изменения:
+```
+Port 2026
+AllowUsers sshuser
+MaxAuthTries 2
+Banner /etc/ssh-banner
+```
+![Screenshot](assets/30.png)
+
+Создайте баннер:
+```bash
+nano /etc/ssh-banner
+```
+```
+Authorized access only
+```
+![Screenshot](assets/32.png)
+
+Перезапустите SSH:
+```bash
+systemctl restart sshd
+```
+Добавить в автозапуск:
+```bash
+systemctl enable sshd
+```
+
+### Настройка DNS-сервера (BIND9)
+Установите BIND:
+```bash
+apt install bind9 dnsutils -y
+```
+![Screenshot](assets/44.png)
+
+#### 1. Файл `/etc/bind/named.conf.options`
+```bash
+nano /etc/bind/named.conf.options
+```
+```nginx
+    listen-on port 53 { any; };
+    listen-on-v6 port 53 { any; };
+    directory "/var/cache/bind";
+    allow-query { any; };
+    allow-recursion { any; };
+    forwarders { 77.88.8.8; 77.88.8.7; 1.1.1.1; };
+    forward only;
+    dnssec-validation no;
+};
+```
+![Screenshot](assets/56.png)
+
+#### 2. Файл `/etc/bind/named.conf.default-zones`
+Добавьте в конец:
+```bash
+nano /etc/bind/named.conf.default-zones
+```
+```nginx
+zone "au-team.irpo" {
+    type master;
+    file "/etc/bind/au-team.irpo";
+    allow-query { any; };
+    allow-transfer { any; };
+};
+
+zone "1.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/au-team.irpo_obr";
+};
+
+zone "2.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/au-team.irpo_hqobr";
+};
+```
+![Screenshot](assets/49.png)
+
+#### 3. Прямая зона `au-team.irpo`
+Скопируйте шаблон:
+```bash
+cp /etc/bind/db.local /etc/bind/au-team.irpo
+nano /etc/bind/au-team.irpo
+```
+
+>[!IMPORTANT]
+>**У HQ-CLI может быть другой IP т.к. у него DHCP, проверить у него IP командой ip a**
+
+Приведите к виду:
+```dns
+$TTL    604800
+@       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
+                              3         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      hq-srv.au-team.irpo.
+hq-srv  IN      A       192.168.1.2
+hq-rtr  IN      A       192.168.1.1
+hq-cli  IN      A       192.168.2.postav_IP
+br-rtr  IN      A       192.168.4.1
+br-srv  IN      A       192.168.4.2
+docker  IN      A       172.16.2.1
+web     IN      A       172.16.1.1
+```
+![Screenshot](assets/50.png)
+
+#### 4. Обратная зона для 192.168.1.0/26
+```bash
+cp /etc/bind/db.127 /etc/bind/au-team.irpo_obr
+nano /etc/bind/au-team.irpo_obr
+```
+```dns
+$TTL    604800
+@       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      hq-srv.au-team.irpo.
+1       IN      PTR     hq-rtr.au-team.irpo.
+2       IN      PTR     hq-srv.au-team.irpo.
+```
+![Screenshot](assets/51.png)
+
+#### 5. Обратная зона для 192.168.2.0/28
+
+>[!IMPORTANT]
+>**У HQ-CLI может быть другой IP т.к. у него DHCP, проверить у него IP командой ip a**
+
+Скопируйте предыдущую и отредактируйте:
+```bash
+cp /etc/bind/au-team.irpo_obr /etc/bind/au-team.irpo_hqobr
+nano /etc/bind/au-team.irpo_hqobr
+```
+```dns
+$TTL    604800
+@       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      hq-srv.au-team.irpo.
+Posledniy_oktet_IP       IN      PTR     hq-cli.au-team.irpo.
+```
+![Screenshot](assets/53.png)
+
+#### 6. Проверка конфигурации
+```bash
+named-checkconf
+named-checkzone au-team.irpo /etc/bind/au-team.irpo
+named-checkzone 1.168.192.in-addr.arpa /etc/bind/au-team.irpo_obr
+named-checkzone 2.168.192.in-addr.arpa /etc/bind/au-team.irpo_hqobr
+```
+Ожидайте вывод **OK**. Если выдает ошибки, то поменяй IP у CLI в настройках обратной зоны и прямой зоны
+
+Перезапустите BIND:
+```bash
+systemctl restart bind9
+```
+
+>[!IMPORTANT]
+>**На DNS не грешить, конфигурация была проверена много раз с использованием нескольких средств виртуализации, если что-либо идет не так, виноваты кривые руки**
+
+#### 7. Проверка работы DNS (проверка на **HQ-SRV**, **HQ-RTR**, **HQ-CLI**)
+Переходим в resolv.conf:
+```bash
+nano /etc/resolv.conf
+```
+Вставляем в конфиг:
+```bash
+search au-team.irpo
+nameserver 192.168.1.2
+```
+Выходим и прописываем:
+```bash
+dig -x 192.168.1.1 @192.168.1.2
+dig -x 192.168.1.2 @192.168.1.2
+```
+Или:
+```bash
+nslookup 192.168.1.2
+nslookup 192.168.1.1
+```
+![Screenshot](assets/55.png)
+
+### Настройка часового пояса
+```bash
+timedatectl set-timezone Asia/Tomsk
+```
+Проверка:
+```bash
+timedatectl
 ```
 
 ---
@@ -507,7 +877,7 @@ timedatectl set-timezone Asia/Tomsk
 
 ### Имя устройства
 ```bash
-hostnamectl set-hostname hq-cli.au-team.irpo; exec bash
+hostnamectl set-hostname hq-cli.au-team.irpo; newgrp
 ```
 ![Screenshot](assets/17.png)
 
@@ -552,256 +922,9 @@ nameserver 192.168.1.2
 ```bash
 timedatectl set-timezone Asia/Tomsk
 ```
-
----
-
-## <p align="center"><b>Устройство HQ-SRV</p>
-
-### Имя устройства
+Проверка:
 ```bash
-hostnamectl set-hostname hq-srv.au-team.irpo; exec bash
-```
-![Screenshot](assets/12.png)
-
-### Закомментировать загрузку
-```bash
-nano /etc/apt/sources.list
-```
-![Screenshot](assets/2.png)
-
-### Временная настройка DNS серверов 
-```bash
-nano /etc/resolv.conf
-```
-Временное содержимое:
-```
-nameserver 1.1.1.1
-```
-![Screenshot](assets/8.png)
-
-### Настройка адресов
-```bash
-nano /etc/network/interfaces
-```
-```ini
-allow-hotplug ens192
-iface ens192 inet static
-address 192.168.1.2
-netmask 255.255.255.224
-gateway 192.168.1.1
-```
-![Screenshot](assets/13.png)
-
-Перезапустите сеть:
-```bash
-systemctl restart networking
-```
-
-> [!CAUTION]
-> Перед началом следует обновить устройство командой
-> ```bash
->apt-get update -y
-> ```
-
-### Добавление пользователя
-```bash
-adduser sshuser -u 2026
-# Пароль: P@ssw0rd
-```
-![Screenshot](assets/27.png)
-
-Выдайте привилегии через `visudo`:
-```bash
-visudo
-```
-Добавьте строку:
-```
-sshuser ALL=(ALL:ALL) ALL
-```
-![Screenshot](assets/21.png)
-
-### Настройка SSH
-```bash
-nano /etc/ssh/sshd_config
-```
-Внесите изменения:
-```
-Port 2026
-AllowUsers sshuser
-MaxAuthTries 2
-Banner /etc/ssh-banner
-```
-![Screenshot](assets/30.png)
-
-Создайте баннер:
-```bash
-nano /etc/ssh-banner
-```
-```
-Authorized access only
-```
-![Screenshot](assets/32.png)
-
-Перезапустите SSH:
-```bash
-systemctl restart sshd
-```
-
-### Настройка DNS-сервера (BIND9)
-Установите BIND:
-```bash
-apt install bind9 dnsutils -y
-```
-![Screenshot](assets/44.png)
-
-#### 1. Файл `/etc/bind/named.conf.options`
-```bash
-nano /etc/bind/named.conf.options
-```
-```nginx
-    listen-on port 53 { any; };
-    listen-on-v6 port 53 { any; };
-    directory "/var/cache/bind";
-    allow-query { any; };
-    allow-recursion { any; };
-    forwarders { 77.88.8.7; 1.1.1.1; };
-    forward only;
-    dnssec-validation no;
-};
-```
-![Screenshot](assets/56.png)
-
-#### 2. Файл `/etc/bind/named.conf.default-zones`
-Добавьте в конец:
-```bash
-nano /etc/bind/named.conf.default-zones
-```
-```nginx
-zone "au-team.irpo" {
-    type master;
-    file "/etc/bind/au-team.irpo";
-    allow-query { any; };
-    allow-transfer { any; };
-};
-
-zone "1.168.192.in-addr.arpa" {
-    type master;
-    file "/etc/bind/au-team.irpo_obr";
-};
-
-zone "2.168.192.in-addr.arpa" {
-    type master;
-    file "/etc/bind/au-team.irpo_hqobr";
-};
-```
-![Screenshot](assets/49.png)
-
-#### 3. Прямая зона `au-team.irpo`
-Скопируйте шаблон:
-```bash
-cp /etc/bind/db.local /etc/bind/au-team.irpo
-nano /etc/bind/au-team.irpo
-```
-Приведите к виду **У HQ-CLI может быть другой IP т.к. у него DHCP**:
-```dns
-$TTL    604800
-@       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
-                              3         ; Serial
-                         604800         ; Refresh
-                          86400         ; Retry
-                        2419200         ; Expire
-                         604800 )       ; Negative Cache TTL
-;
-@       IN      NS      hq-srv.au-team.irpo.
-hq-srv  IN      A       192.168.1.2
-hq-rtr  IN      A       192.168.1.1
-hq-cli  IN      A       192.168.2.2
-br-rtr  IN      A       192.168.4.1
-br-srv  IN      A       192.168.4.2
-docker  IN      A       172.16.2.1
-web     IN      A       172.16.1.1
-```
-![Screenshot](assets/50.png)
-
-#### 4. Обратная зона для 192.168.1.0/26
-```bash
-cp /etc/bind/db.127 /etc/bind/au-team.irpo_obr
-nano /etc/bind/au-team.irpo_obr
-```
-```dns
-$TTL    604800
-@       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
-                              1         ; Serial
-                         604800         ; Refresh
-                          86400         ; Retry
-                        2419200         ; Expire
-                         604800 )       ; Negative Cache TTL
-;
-@       IN      NS      hq-srv.au-team.irpo.
-1       IN      PTR     hq-rtr.au-team.irpo.
-2       IN      PTR     hq-srv.au-team.irpo.
-```
-![Screenshot](assets/51.png)
-
-#### 5. Обратная зона для 192.168.2.0/28
-Скопируйте предыдущую и отредактируйте **У HQ-CLI может быть другой IP т.к. у него DHCP**:
-```bash
-cp /etc/bind/au-team.irpo_obr /etc/bind/au-team.irpo_hqobr
-nano /etc/bind/au-team.irpo_hqobr
-```
-```dns
-$TTL    604800
-@       IN      SOA     hq-srv.au-team.irpo. root.au-team.irpo. (
-                              1         ; Serial
-                         604800         ; Refresh
-                          86400         ; Retry
-                        2419200         ; Expire
-                         604800 )       ; Negative Cache TTL
-;
-@       IN      NS      hq-srv.au-team.irpo.
-2       IN      PTR     hq-cli.au-team.irpo.
-```
-![Screenshot](assets/53.png)
-
-#### 6. Проверка конфигурации
-```bash
-named-checkconf
-named-checkzone au-team.irpo /etc/bind/au-team.irpo
-named-checkzone 1.168.192.in-addr.arpa /etc/bind/au-team.irpo_obr
-named-checkzone 2.168.192.in-addr.arpa /etc/bind/au-team.irpo_hqobr
-```
-Ожидайте вывод **OK**.
-
-Перезапустите BIND:
-```bash
-systemctl restart bind9
-```
-
->[!IMPORTANT]
->**На DNS не грешить, конфигурация была проверена много раз с использованием нескольких средств виртуализации, если что-либо идет не так, виновата другая часть методички**
-
-#### 7. Проверка работы DNS (проверка на hq-srv, hq-rtr)
-Переходим в resolv.conf:
-```bash
-nano /etc/resolv.conf
-```
-Вставляем в конфиг:
-```bash
-search au-team.irpo
-nameserver 192.168.1.2
-```
-```bash
-dig -x 192.168.1.1 @192.168.1.2
-```
-С клиента (HQ-CLI) выполните:
-```bash
-nslookup 192.168.1.2
-```
-![Screenshot](assets/55.png)
-
-### Настройка часового пояса
-```bash
-timedatectl set-timezone Asia/Tomsk
+timedatectl
 ```
 
 ---
@@ -810,7 +933,7 @@ timedatectl set-timezone Asia/Tomsk
 
 ### Имя устройства
 ```bash
-hostnamectl set-hostname br-srv.au-team.irpo; exec bash
+hostnamectl set-hostname br-srv.au-team.irpo; newgrp
 ```
 ![Screenshot](assets/4.png)
 
@@ -818,15 +941,16 @@ hostnamectl set-hostname br-srv.au-team.irpo; exec bash
 ```bash
 nano /etc/apt/sources.list
 ```
-### Временная настройка DNS серверов 
+### Настройка DNS серверов 
 ```bash
 nano /etc/resolv.conf
 ```
-Временное содержимое:
+Постоянное содержимое:
 ```
-nameserver 1.1.1.1
+search au-team.irpo
+nameserver 192.168.1.2
 ```
-![Screenshot](assets/8.png)
+![Screenshot](assets/54.png)
 
 ### Настройка адресов
 ```bash
@@ -852,10 +976,9 @@ systemctl restart networking
 >apt-get update -y
 > ```
 
-### Добавление пользователя
+### Добавление пользователя с паролем `P@ssw0rd`
 ```bash
 adduser sshuser -u 2026
-# Пароль: P@ssw0rd
 ```
 ![Screenshot](assets/19.png)
 
@@ -868,7 +991,6 @@ visudo
 sshuser ALL=(ALL:ALL) ALL
 ```
 ![Screenshot](assets/21.png)
-
 
 ### Настройка SSH
 ```bash
@@ -895,7 +1017,9 @@ Authorized access only
 ```bash
 systemctl restart sshd
 ```
-
+```bash
+systemctl enable sshd
+```
 ### Настройка часового пояса
 ```bash
 timedatectl set-timezone Asia/Tomsk
@@ -953,15 +1077,17 @@ deb-src http://mirror.yandex.ru/debian/ bookworm-updates main contrib
 >
 >Также нужно проверить работу ssh на HQ-SRV и BR-SRV командами:
 >
->С BR-RTR `ssh -p 2026 sshuser@192.168.4.2`
+>С BR-RTR `ssh -p 2026 sshuser@192.168.4.2` и `ping 10.10.0.1`
 >
->С HQ-RTR `ssh -p 2026 sshuser@192.168.1.2`
+>С HQ-RTR `ssh -p 2026 sshuser@192.168.1.2` и `ping 10.10.0.2`
 >
 >Проверка BIND9 и DHCP:
 >
 >На HQ-RTR `systemctl status isc-dhcp-server`
 >
 >На HQ-SRV `systemctl status bind9`
+>
+>На всех машинах `timedatectl`
 ---
 
 ## <p align="center"><b>МОДУЛЬ 2</b></p>
