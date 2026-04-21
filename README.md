@@ -1098,7 +1098,7 @@ deb-src http://mirror.yandex.ru/debian/ bookworm-updates main contrib
 
 ### Установка необходимых пакетов
 ```bash
-apt install samba smbclient winbind krb5-config -y
+apt install samba smbclient winbind krb5-user krb5-config -y
 ```
 
 При установке `krb5-config` будут запрошены параметры:
@@ -1132,6 +1132,7 @@ cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
 
 ### Запуск Samba AD DC
 ```bash
+systemctl mask smbd nmbd winbind
 systemctl unmask samba-ad-dc
 systemctl enable samba-ad-dc
 systemctl start samba-ad-dc
@@ -1241,7 +1242,7 @@ nano /etc/pam.d/common-session
 ```
 Добавьте строку:
 ```
-session required pam_mkhomedir.so skel=/etc/skel umask=077
+session required pam_mkhomedir.so umask=0022 skel=/etc/skel
 ```
 
 Проверьте вход под доменным пользователем:
