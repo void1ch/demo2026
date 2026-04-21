@@ -1135,7 +1135,8 @@ cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
 systemctl mask smbd nmbd winbind
 systemctl unmask samba-ad-dc
 systemctl enable samba-ad-dc
-systemctl start samba-ad-dc
+systwmctl restart samba-ad-dc
+systwmctl restart winbind
 ```
 
 ### Проверка работы домена
@@ -1204,6 +1205,9 @@ chmod +x /usr/local/bin/restricted_shell.sh
 apt install realmd sssd sssd-tools adcli packagekit samba-common-bin -y
 ```
 
+> [!WARNING]
+> Пока не трогать: libnss-sss libpam-sss
+
 Настройте DNS на HQ-CLI для использования BR-SRV:
 ```bash
 nano /etc/resolv.conf
@@ -1219,6 +1223,7 @@ realm join AU-TEAM.IRPO -U Administrator
 # Пароль: P@ssw0rd
 ```
 >[!WARNING]
+>Если не находится команда realm, то в начале /usr/sbin 
 >Если на HQ-CLI во время присоединения к домену выдают ошибку, то стоит проверить точность времени на BR-SRV и HQ-CLI путем команды `date`, так как иногда происходят приколы с точностью даты и времени на виртуалках 
 >```bash
 >date --set "2026-03-16 10:55:36"
@@ -1229,6 +1234,9 @@ realm join AU-TEAM.IRPO -U Administrator
 >79
 >#Выбор Томска в диалоговом окне
 >```
+
+> [!WARNING]
+> Пока не трогать: `net ads join -U Administrator`
 
 Проверка:
 ```bash
@@ -1242,8 +1250,14 @@ nano /etc/pam.d/common-session
 ```
 Добавьте строку:
 ```
-session required pam_mkhomedir.so umask=0022 skel=/etc/skel
+session required    pam_mkhomedir.so umask=0077 skel=/etc/skel
 ```
+> [!WARNING]
+> session optional    pam_sss.so
+> Пока не трогать: umask=0022
+> nano /etc/sssd/sssd.conf
+> fallback_homedir = /home/%d/%u
+> service ssd status / systemctl status sssd
 
 Проверьте вход под доменным пользователем:
 ```bash
